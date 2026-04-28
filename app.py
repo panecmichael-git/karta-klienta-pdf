@@ -67,8 +67,6 @@ GRAY  = colors.HexColor("#f4f5f7")
 WHITE = colors.white
 BLACK = colors.black
 DGRAY = colors.HexColor("#888888")
-GREEN = colors.HexColor("#1a7a3c")
-RED   = colors.HexColor("#b00020")
 
 # ─────────────────────────────────────────────────────────────
 #  STREAMLIT UI
@@ -89,7 +87,6 @@ h1 { color: #003399; }
 st.title("📄 Digitální Karta Klienta UNIQA")
 
 with st.form("form"):
-
     st.subheader("👤 Osobní údaje")
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -99,9 +96,9 @@ with st.form("form"):
         mobil    = st.text_input("Mobilní telefon")
         povolani = st.text_input("Povolání / Zaměstnavatel")
     with c3:
-        datum_schuzky  = st.date_input("Datum schůzky",          value=datetime.now())
-        datum_kontaktu = st.date_input("Datum nás. kontaktu",     value=datetime.now() + timedelta(days=90))
-        poradce        = st.text_input("Poradce / Kód",           value="Jan Miksa")
+        datum_schuzky  = st.date_input("Datum schůzky",      value=datetime.now())
+        datum_kontaktu = st.date_input("Datum nás. kontaktu", value=datetime.now() + timedelta(days=90))
+        poradce        = st.text_input("Poradce / Kód",       value="Jan Miksa")
 
     st.divider()
     st.subheader("🎯 Témata k řešení")
@@ -127,43 +124,43 @@ with st.form("form"):
         r1,r2,r3 = st.columns([2,1,1])
         ziv   = r1.checkbox("Životní pojištění")
         ziv_p = r2.selectbox("Poj.", POJISTOVNY, key="p1")
-        ziv_s = r3.selectbox("Stat.", STATUSY, key="s1")
+        ziv_s = r3.selectbox("Stat.", STATUSY,   key="s1")
         r1,r2,r3 = st.columns([2,1,1])
         ura   = r1.checkbox("Úraz / Nemoc")
         ura_p = r2.selectbox("Poj.", POJISTOVNY, key="p2")
-        ura_s = r3.selectbox("Stat.", STATUSY, key="s2")
+        ura_s = r3.selectbox("Stat.", STATUSY,   key="s2")
         r1,r2,r3 = st.columns([2,1,1])
         inv   = r1.checkbox("Invalidita / Péče")
         inv_p = r2.selectbox("Poj.", POJISTOVNY, key="p3")
-        inv_s = r3.selectbox("Stat.", STATUSY, key="s3")
+        inv_s = r3.selectbox("Stat.", STATUSY,   key="s3")
         st.write("**Majetek a Auto:**")
         r1,r2,r3 = st.columns([2,1,1])
         maj   = r1.checkbox("Dům / Byt / Odp.")
         maj_p = r2.selectbox("Poj.", POJISTOVNY, key="p4")
-        maj_s = r3.selectbox("Stat.", STATUSY, key="s4")
+        maj_s = r3.selectbox("Stat.", STATUSY,   key="s4")
         r1,r2,r3 = st.columns([2,1,1])
         aut   = r1.checkbox("Auto (POV/HAV)")
         aut_p = r2.selectbox("Poj.", POJISTOVNY, key="p5")
-        aut_s = r3.selectbox("Stat.", STATUSY, key="s5")
+        aut_s = r3.selectbox("Stat.", STATUSY,   key="s5")
     with col2:
         st.write("**Finance a Podnikání:**")
         r1,r2,r3 = st.columns([2,1,1])
         ins   = r1.checkbox("Investice / DIP")
         ins_p = r2.selectbox("Inst.", POJISTOVNY, key="p6")
-        ins_s = r3.selectbox("Stat.", STATUSY, key="s6")
+        ins_s = r3.selectbox("Stat.", STATUSY,    key="s6")
         r1,r2,r3 = st.columns([2,1,1])
         dps   = r1.checkbox("Penzijko (DPS/PP)")
-        dps_p = r2.selectbox("Fond", POJISTOVNY, key="p7")
-        dps_s = r3.selectbox("Stat.", STATUSY, key="s7")
+        dps_p = r2.selectbox("Fond",  POJISTOVNY, key="p7")
+        dps_s = r3.selectbox("Stat.", STATUSY,    key="s7")
         r1,r2,r3 = st.columns([2,1,1])
         pod   = r1.checkbox("Podnikatelské poj.")
         pod_p = r2.selectbox("Poj.", POJISTOVNY, key="p8")
-        pod_s = r3.selectbox("Stat.", STATUSY, key="s8")
+        pod_s = r3.selectbox("Stat.", STATUSY,   key="s8")
         prispevek = st.text_input("Příspěvek zaměstnavatele:")
         r1,r2,r3 = st.columns([2,1,1])
         hyp   = r1.checkbox("Hypotéka / Úvěr")
         hyp_p = r2.selectbox("Banka", POJISTOVNY, key="p9")
-        hyp_s = r3.selectbox("Stat.", STATUSY, key="s9")
+        hyp_s = r3.selectbox("Stat.", STATUSY,    key="s9")
 
     st.divider()
     st.subheader("🏁 Závěr a další kroky")
@@ -180,75 +177,92 @@ with st.form("form"):
 
 
 # ─────────────────────────────────────────────────────────────
-#  GENEROVÁNÍ PDF
+#  PDF
 # ─────────────────────────────────────────────────────────────
 def generuj_pdf(d: dict) -> bytes:
     buf = io.BytesIO()
+
+    # A4 = 595.27 x 841.89 pt
+    # Okraje 10mm každá strana → W = 595.27 - 20mm = 595.27 - 56.69 ≈ 538.58 pt
+    LEFT = RIGHT = 10 * mm
+    TOP  = 8  * mm
+    BOT  = 6  * mm
+
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
-        leftMargin=10*mm, rightMargin=10*mm,
-        topMargin=8*mm,   bottomMargin=6*mm,
+        leftMargin=LEFT, rightMargin=RIGHT,
+        topMargin=TOP,   bottomMargin=BOT,
     )
 
-    gs = getSampleStyleSheet()
+    gs  = getSampleStyleSheet()
+    W   = A4[0] - LEFT - RIGHT   # přesná šířka obsahu v bodech
 
+    # ── styly ────────────────────────────────────────────────
     def S(name, **kw):
         kw.setdefault("fontName", FN)
         kw.setdefault("fontSize", 8)
         kw.setdefault("leading",  10)
+        kw.setdefault("wordWrap", "CJK")
         return ParagraphStyle(name, parent=gs["Normal"], **kw)
 
-    # Styly
-    sTitle  = S("ti", fontSize=14, fontName=FNB, textColor=WHITE, leading=18)
-    sSub    = S("su", fontSize=7,  textColor=LBLUE, leading=9)
-    sSec    = S("sc", fontSize=7.5,fontName=FNB, textColor=WHITE, leading=9)
-    sLbl    = S("lb", fontSize=6.5,textColor=DGRAY, leading=8)
-    sVal    = S("va", fontSize=8,  fontName=FNB, textColor=BLACK, leading=10)
-    sHdr    = S("hd", fontSize=7,  fontName=FNB, textColor=WHITE, leading=9, alignment=TA_CENTER)
-    sCell   = S("cc", fontSize=7.5,textColor=BLACK, leading=9, alignment=TA_CENTER)
-    sCellL  = S("cl", fontSize=7.5,textColor=BLACK, leading=9, alignment=TA_LEFT)
-    sGroup  = S("gr", fontSize=7,  fontName=FNB, textColor=BLUE, leading=9)
-    sNote   = S("nt", fontSize=7.5,textColor=BLACK, leading=10)
-    sFooter = S("ft", fontSize=6,  textColor=DGRAY, alignment=TA_CENTER)
+    sTitle  = S("ti", fontSize=13, fontName=FNB, textColor=WHITE,
+                leading=16, alignment=TA_LEFT)
+    sSub    = S("su", fontSize=7,  textColor=LBLUE, leading=9,
+                alignment=TA_RIGHT)
+    sSec    = S("sc", fontSize=7.5, fontName=FNB, textColor=WHITE, leading=9)
+    sLbl    = S("lb", fontSize=6.5, textColor=DGRAY, leading=8)
+    sVal    = S("va", fontSize=8,   fontName=FNB, textColor=BLACK, leading=10)
+    sHdr    = S("hd", fontSize=7,   fontName=FNB, textColor=WHITE, leading=9,
+                alignment=TA_CENTER)
+    sCell   = S("cc", fontSize=7.5, textColor=BLACK, leading=9,
+                alignment=TA_CENTER)
+    sCellL  = S("cl", fontSize=7.5, textColor=BLACK, leading=9,
+                alignment=TA_LEFT)
+    sGroup  = S("gr", fontSize=7,   fontName=FNB, textColor=BLUE, leading=9)
+    sNote   = S("nt", fontSize=7.5, textColor=BLACK, leading=10)
+    sFooter = S("ft", fontSize=6,   textColor=DGRAY, alignment=TA_CENTER)
 
-    W  = A4[0] - 20*mm
+    # ── pomocné ───────────────────────────────────────────────
     sp = lambda n=3: Spacer(1, n)
 
-    story = []
+    # Padding pro buňky — MUSÍ být malý, aby colWidths nevyšly záporně
+    PAD = 3   # pt
 
-    # ── pomocné funkce ────────────────────────────────────────
-    def sec_bar(text, width=None):
-        w = width or W
-        t = Table([[Paragraph(text, sSec)]], colWidths=[w])
-        t.setStyle(TableStyle([
-            ("BACKGROUND",    (0,0),(-1,-1), BLUE),
-            ("TOPPADDING",    (0,0),(-1,-1), 3),
-            ("BOTTOMPADDING", (0,0),(-1,-1), 3),
-            ("LEFTPADDING",   (0,0),(-1,-1), 6),
-            ("RIGHTPADDING",  (0,0),(-1,-1), 6),
-        ]))
-        return t
-
-    def base_style(extra=None):
+    def base_ts(extra=None):
+        """Základní TableStyle — bez negat. šířky."""
         s = [
-            ("ROWBACKGROUNDS", (0,0),(-1,-1), [WHITE, GRAY]),
-            ("TOPPADDING",     (0,0),(-1,-1), 2),
-            ("BOTTOMPADDING",  (0,0),(-1,-1), 2),
-            ("LEFTPADDING",    (0,0),(-1,-1), 5),
-            ("RIGHTPADDING",   (0,0),(-1,-1), 5),
-            ("VALIGN",         (0,0),(-1,-1), "MIDDLE"),
-            ("LINEBELOW",      (0,0),(-1,-1), 0.25, colors.HexColor("#cccccc")),
+            ("ROWBACKGROUNDS", (0,0), (-1,-1), [WHITE, GRAY]),
+            ("TOPPADDING",     (0,0), (-1,-1), PAD),
+            ("BOTTOMPADDING",  (0,0), (-1,-1), PAD),
+            ("LEFTPADDING",    (0,0), (-1,-1), PAD),
+            ("RIGHTPADDING",   (0,0), (-1,-1), PAD),
+            ("VALIGN",         (0,0), (-1,-1), "MIDDLE"),
+            ("LINEBELOW",      (0,0), (-1,-1), 0.25,
+             colors.HexColor("#cccccc")),
         ]
         if extra:
             s += extra
         return s
 
+    def sec_bar(txt):
+        t = Table([[Paragraph(txt, sSec)]], colWidths=[W])
+        t.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0), (-1,-1), BLUE),
+            ("TOPPADDING",    (0,0), (-1,-1), 3),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+            ("LEFTPADDING",   (0,0), (-1,-1), 6),
+            ("RIGHTPADDING",  (0,0), (-1,-1), 6),
+        ]))
+        return t
+
     def chip(val):
         if val:
-            return Paragraph('<font color="#1a7a3c"><b>✔ ANO</b></font>', sCell)
-        return Paragraph('<font color="#b00020"><b>✘ NE</b></font>', sCell)
+            return Paragraph(
+                '<font color="#1a7a3c"><b>ANO</b></font>', sCell)
+        return Paragraph(
+            '<font color="#b00020"><b>NE</b></font>', sCell)
 
-    STATUS_COLOR = {
+    STATUS_COL = {
         "Mám / OK":    "#1a7a3c",
         "Chci řešit":  "#d45f00",
         "Chci revizi": "#8b0000",
@@ -256,261 +270,265 @@ def generuj_pdf(d: dict) -> bytes:
         "-":           "#aaaaaa",
     }
     def stat_p(s):
-        c = STATUS_COLOR.get(s, "#555555")
-        return Paragraph(f'<font color="{c}"><b>{s}</b></font>', sCell)
+        c = STATUS_COL.get(s, "#555555")
+        return Paragraph(
+            f'<font color="{c}"><b>{s}</b></font>', sCell)
 
-    # ─────────────────────────────────────────────────────────
+    story = []
+
+    # ════════════════════════════════════════════════════════
     #  ZÁHLAVÍ
-    # ─────────────────────────────────────────────────────────
+    # ════════════════════════════════════════════════════════
     ts = datetime.now().strftime("%d.%m.%Y  %H:%M")
-    hdr = Table([
-        [
-            Paragraph("DIGITÁLNÍ KARTA KLIENTA", sTitle),
-            Paragraph(f"UNIQA pojišťovna, a.s.<br/>Poradce: <b>{d['poradce']}</b>  |  {ts}", sSub),
-        ]
-    ], colWidths=[W*0.62, W*0.38])
+
+    # Přesné colWidths = W
+    hdr = Table([[
+        Paragraph("DIGITÁLNÍ KARTA KLIENTA", sTitle),
+        Paragraph(
+            f"UNIQA pojišťovna, a.s.<br/>"
+            f"Poradce: <b>{d['poradce']}</b>  |  {ts}",
+            sSub),
+    ]], colWidths=[W * 0.60, W * 0.40])
     hdr.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),(-1,-1), BLUE),
-        ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
-        ("LEFTPADDING",   (0,0),(0,0),   10),
-        ("TOPPADDING",    (0,0),(-1,-1),  7),
-        ("BOTTOMPADDING", (0,0),(-1,-1),  7),
-        ("ALIGN",         (1,0),(1,0),   "RIGHT"),
-        ("RIGHTPADDING",  (1,0),(1,0),    10),
+        ("BACKGROUND",    (0,0), (-1,-1), BLUE),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ("TOPPADDING",    (0,0), (-1,-1), 7),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 7),
+        ("LEFTPADDING",   (0,0), (0, 0),  10),
+        ("LEFTPADDING",   (1,0), (1, 0),  PAD),
+        ("RIGHTPADDING",  (0,0), (-1,-1), PAD),
     ]))
     story.append(hdr)
     story.append(sp(4))
 
-    # ─────────────────────────────────────────────────────────
-    #  SEKCE 1 — OSOBNÍ ÚDAJE
-    # ─────────────────────────────────────────────────────────
+    # ════════════════════════════════════════════════════════
+    #  SEC 1 — OSOBNÍ ÚDAJE
+    #  4 sloupce: [label  |  hodnota  |  label  |  hodnota]
+    #  Součet = W
+    # ════════════════════════════════════════════════════════
     story.append(sec_bar("1  |  OSOBNÍ ÚDAJE A SCHŮZKA"))
 
-    # 4 sloupce: label | hodnota | label | hodnota
-    cw = [W*0.16, W*0.34, W*0.16, W*0.34]
+    C_LBL = W * 0.18   # label
+    C_VAL = W * 0.32   # hodnota
+    # 2× (label + hodnota) = 2×0.18 + 2×0.32 = 1.00 ✓
+    cw_os = [C_LBL, C_VAL, C_LBL, C_VAL]
+
+    def lv(lbl, val):
+        return [Paragraph(lbl, sLbl), Paragraph(val or "—", sVal),
+                None, None]   # 3. a 4. buňka se nastaví níže
+
     os_rows = [
-        [Paragraph("Jméno a příjmení", sLbl),
-         Paragraph(d["jmeno"] or "—",  sVal),
-         Paragraph("Datum schůzky",    sLbl),
+        [Paragraph("Jméno a příjmení",    sLbl),
+         Paragraph(d["jmeno"] or "—",     sVal),
+         Paragraph("Datum schůzky",       sLbl),
          Paragraph(d["datum_schuzky"].strftime("%d.%m.%Y"), sVal)],
 
-        [Paragraph("E-mail",           sLbl),
-         Paragraph(d["email"] or "—",  sVal),
+        [Paragraph("E-mail",              sLbl),
+         Paragraph(d["email"] or "—",     sVal),
          Paragraph("Datum nás. kontaktu", sLbl),
          Paragraph(d["datum_kontaktu"].strftime("%d.%m.%Y"), sVal)],
 
-        [Paragraph("Mobilní telefon",  sLbl),
-         Paragraph(d["mobil"] or "—",  sVal),
-         Paragraph("Poradce / Kód",    sLbl),
-         Paragraph(d["poradce"] or "—",sVal)],
+        [Paragraph("Mobilní telefon",     sLbl),
+         Paragraph(d["mobil"] or "—",     sVal),
+         Paragraph("Poradce / Kód",       sLbl),
+         Paragraph(d["poradce"] or "—",   sVal)],
 
-        [Paragraph("Povolání / Zaměstnavatel", sLbl),
-         Paragraph(d["povolani"] or "—", sVal),
+        [Paragraph("Povolání",            sLbl),
+         Paragraph(d["povolani"] or "—",  sVal),
          Paragraph("", sLbl),
          Paragraph("", sVal)],
     ]
-    os_tbl = Table(os_rows, colWidths=cw)
-    os_tbl.setStyle(TableStyle(base_style()))
+    os_tbl = Table(os_rows, colWidths=cw_os)
+    os_tbl.setStyle(TableStyle(base_ts()))
     story.append(os_tbl)
-    story.append(sp())
+    story.append(sp(3))
 
-    # ─────────────────────────────────────────────────────────
-    #  SEKCE 2 — TÉMATA
-    # ─────────────────────────────────────────────────────────
+    # ════════════════════════════════════════════════════════
+    #  SEC 2 — TÉMATA
+    #  3 skupiny vedle sebe: [název | chip] [název | chip] [název | chip]
+    #  Šířky: 3 × (název + chip) = 3 × (0.29 + 0.045) = 3 × 0.335 = ~1.005
+    #  Zaokrouhlíme: 3 × (0.288 + 0.045) = 3 × 0.333 = 0.999 → +0.001 na poslední chip
+    # ════════════════════════════════════════════════════════
     story.append(sec_bar("2  |  HLAVNÍ TÉMATA K ŘEŠENÍ"))
 
-    temata = [
-        ("Vlastní zajištění (příjem)",        d["t_vlastni"]),
-        ("Zajištění rodiny",                  d["t_rodina"]),
-        ("Zajištění dětí / Start do života",  d["t_deti"]),
-        ("Vlastní bydlení / Rekonstrukce",    d["t_bydleni"]),
-        ("Renta / Budoucí rezerva",           d["t_renta"]),
-        ("Ochrana majetku a auta",            d["t_majetek"]),
-        ("Podnikatelská rizika",              d["t_podnik"]),
-        ("Daňové úspory a efektivita",        d["t_dane"]),
-        ("Optimalizace úvěrů / Dluhů",        d["t_uvery"]),
-    ]
+    C_TEM  = W * 0.288   # název tématu
+    C_CHIP = W * 0.045   # chip ANO/NE
+    # 3 páry = 6 sloupců; 3×0.288 + 3×0.045 = 0.864 + 0.135 = 0.999 → zbytek 0.001*W do posledního chipu
+    C_CHIP_LAST = W - 2 * C_TEM - 2 * C_CHIP - C_TEM
+    cw_tem = [C_TEM, C_CHIP, C_TEM, C_CHIP, C_TEM, C_CHIP_LAST]
 
-    # 3 skupiny po 3 — každá skupina: název | chip | mezera
-    # Layout: [nazev][chip][medzera][nazev][chip][medzera][nazev][chip]
-    col_n = W * 0.28
-    col_c = W * 0.05
-    col_g = W * 0.01
+    temata = [
+        ("Vlastní zajištění (příjem)",       d["t_vlastni"]),
+        ("Zajištění rodiny",                 d["t_rodina"]),
+        ("Zajištění dětí / Start",           d["t_deti"]),
+        ("Bydlení / Rekonstrukce",           d["t_bydleni"]),
+        ("Renta / Budoucí rezerva",          d["t_renta"]),
+        ("Ochrana majetku a auta",           d["t_majetek"]),
+        ("Podnikatelská rizika",             d["t_podnik"]),
+        ("Daňové úspory",                    d["t_dane"]),
+        ("Optimalizace úvěrů",               d["t_uvery"]),
+    ]
     t_rows = []
     for i in range(0, 9, 3):
         row = []
-        for j in range(3):
-            txt, val = temata[i+j]
+        for txt, val in temata[i:i+3]:
             row.append(Paragraph(txt, sCellL))
             row.append(chip(val))
-            if j < 2:
-                row.append(Paragraph("", sCell))  # mezera
         t_rows.append(row)
 
-    tem_tbl = Table(
-        t_rows,
-        colWidths=[col_n, col_c, col_g, col_n, col_c, col_g, col_n, col_c]
-    )
-    tem_tbl.setStyle(TableStyle(base_style()))
+    tem_tbl = Table(t_rows, colWidths=cw_tem)
+    tem_tbl.setStyle(TableStyle(base_ts()))
     story.append(tem_tbl)
-    story.append(sp())
+    story.append(sp(3))
 
-    # ─────────────────────────────────────────────────────────
-    #  SEKCE 3 — PORTFOLIO
-    # ─────────────────────────────────────────────────────────
+    # ════════════════════════════════════════════════════════
+    #  SEC 3 — PORTFOLIO
+    #  Dual-column: levá polovina | pravá polovina
+    #  Každá polovina: [produkt | zájem | pojišťovna | status]
+    #  Polovina šířky = W/2 = 0.50W
+    #  Sloupce v jedné polovině: 0.22 | 0.07 | 0.12 | 0.09 = 0.50 ✓
+    # ════════════════════════════════════════════════════════
     story.append(sec_bar("3  |  ANALÝZA PORTFOLIA"))
 
-    # Šířky sloupců portfolia
-    pf_cw = [W*0.30, W*0.09, W*0.16, W*0.20,   # levá polovina
-              W*0.005,                            # oddělovač
-              W*0.30, W*0.09, W*0.16, W*0.145]  # pravá polovina (zbytek)
+    # Přesné šířky — dvě sady po 4 sloupcích, součet = W
+    A = W * 0.220   # produkt
+    B = W * 0.068   # zájem
+    C = W * 0.116   # pojišťovna
+    D = W * 0.096   # status
+    # Levá polovina: A+B+C+D = 0.500
+    # Pravá polovina stejná: A+B+C+D = 0.500
+    # Celkem: 1.000 ✓
+    cw_pf = [A, B, C, D, A, B, C, D]
 
-    def pf_hdr_row():
-        h = Paragraph
-        empty = Paragraph("", sHdr)
-        return [
-            h("Produkt",    sHdr), h("Zájem", sHdr), h("Pojišťovna", sHdr), h("Status", sHdr),
-            empty,
-            h("Produkt",    sHdr), h("Zájem", sHdr), h("Pojišťovna", sHdr), h("Status", sHdr),
-        ]
+    def pf_hdr():
+        h = lambda t: Paragraph(t, sHdr)
+        return [h("Produkt"), h("Zájem"), h("Pojišťovna"), h("Status"),
+                h("Produkt"), h("Zájem"), h("Pojišťovna"), h("Status")]
 
-    def pf_row(prod, zajem, poj, stat, is_group=False):
-        if is_group:
-            return [Paragraph(prod, sGroup), "", "", "", "", "", "", "", ""]
-        return [
-            Paragraph(prod, sCellL), chip(zajem),
-            Paragraph(poj,  sCell),  stat_p(stat),
-            Paragraph("",   sCell),
-            Paragraph("",   sCellL), Paragraph("", sCell),
-            Paragraph("",   sCell),  Paragraph("", sCell),
-        ]
+    def pf_group(left_txt, right_txt):
+        l = Paragraph(left_txt,  sGroup) if left_txt  else Paragraph("", sGroup)
+        r = Paragraph(right_txt, sGroup) if right_txt else Paragraph("", sGroup)
+        return [l, "", "", "", r, "", "", ""]
 
-    def pf_row2(prodL, zajem_l, pojL, statL,
-                prodR, zajem_r, pojR, statR):
-        return [
-            Paragraph(prodL, sCellL), chip(zajem_l),
-            Paragraph(pojL,  sCell),  stat_p(statL),
-            Paragraph("|",   sFooter),
-            Paragraph(prodR, sCellL), chip(zajem_r),
-            Paragraph(pojR,  sCell),  stat_p(statR),
-        ]
+    def pf_data(pL, zL, jL, sL, pR, zR, jR, sR):
+        def side(prod, zajem, poj, stat):
+            if prod == "":
+                return [Paragraph("", sCellL), Paragraph("", sCell),
+                        Paragraph("", sCell),  Paragraph("", sCell)]
+            return [Paragraph(prod, sCellL), chip(zajem),
+                    Paragraph(poj,  sCell),  stat_p(stat)]
+        return side(pL, zL, jL, sL) + side(pR, zR, jR, sR)
 
-    def pf_group_row(text_l, text_r=""):
-        tl = Paragraph(text_l, sGroup) if text_l else Paragraph("", sGroup)
-        tr = Paragraph(text_r, sGroup) if text_r else Paragraph("", sGroup)
-        return [tl, "", "", "", "", tr, "", "", ""]
-
-    pf_rows = [pf_hdr_row()]
-
-    # Skupina 1 záhlaví + Skupina 2 záhlaví vedle sebe
-    pf_rows.append(pf_group_row("── Ochrana osob ──", "── Majetek a Auto ──"))
-    pf_rows.append(pf_row2("Životní pojištění",   d["ziv"], d["ziv_p"], d["ziv_s"],
-                            "Dům / Byt / Odpovědnost", d["maj"], d["maj_p"], d["maj_s"]))
-    pf_rows.append(pf_row2("Úraz / Nemoc",        d["ura"], d["ura_p"], d["ura_s"],
-                            "Auto (POV / HAV)",    d["aut"], d["aut_p"], d["aut_s"]))
-    pf_rows.append(pf_row2("Invalidita / Péče",   d["inv"], d["inv_p"], d["inv_s"],
-                            "", False, "-", "-"))
-
-    pf_rows.append(pf_group_row("── Finance a Podnikání ──", ""))
-    pf_rows.append(pf_row2("Investice / DIP",      d["ins"], d["ins_p"], d["ins_s"],
-                            "Penzijko (DPS/PP)",   d["dps"], d["dps_p"], d["dps_s"]))
-    pf_rows.append(pf_row2("Podnik. pojištění",    d["pod"], d["pod_p"], d["pod_s"],
-                            "Hypotéka / Úvěr",     d["hyp"], d["hyp_p"], d["hyp_s"]))
-
-    # Styly portfolia
-    pf_style = [
-        ("BACKGROUND",    (0,0),(-1,0),  BLUE),
-        ("ROWBACKGROUNDS",(0,1),(-1,-1), [WHITE, GRAY]),
-        ("TOPPADDING",    (0,0),(-1,-1), 2),
-        ("BOTTOMPADDING", (0,0),(-1,-1), 2),
-        ("LEFTPADDING",   (0,0),(-1,-1), 4),
-        ("RIGHTPADDING",  (0,0),(-1,-1), 4),
-        ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
-        ("LINEBELOW",     (0,0),(-1,-1), 0.25, colors.HexColor("#cccccc")),
-        # Oddělovač středu
-        ("TEXTCOLOR",     (4,0),(4,-1),  colors.HexColor("#aaaaaa")),
-        ("ALIGN",         (4,0),(4,-1),  "CENTER"),
-        # Zvýraznění skupin
-        ("BACKGROUND",    (0,1),(3,1),   LBLUE),
-        ("BACKGROUND",    (5,1),(8,1),   LBLUE),
-        ("BACKGROUND",    (0,5),(8,5),   LBLUE),
-        ("SPAN",          (0,1),(3,1)),
-        ("SPAN",          (5,1),(8,1)),
-        ("SPAN",          (0,5),(8,5)),
-        # Prázdný řádek col 5-8 v group řádku 1
-        ("SPAN",          (0,4),(3,4)),  # prázdná bunka invalidita pravá
+    pf_rows = [
+        pf_hdr(),
+        pf_group("── Ochrana osob ──",     "── Majetek a Auto ──"),
+        pf_data("Životní pojištění",  d["ziv"], d["ziv_p"], d["ziv_s"],
+                "Dům / Byt / Odp.",  d["maj"], d["maj_p"], d["maj_s"]),
+        pf_data("Úraz / Nemoc",       d["ura"], d["ura_p"], d["ura_s"],
+                "Auto (POV / HAV)",  d["aut"], d["aut_p"], d["aut_s"]),
+        pf_data("Invalidita / Péče",  d["inv"], d["inv_p"], d["inv_s"],
+                "",                  False,    "-",         "-"),
+        pf_group("── Finance a Podnikání ──", ""),
+        pf_data("Investice / DIP",    d["ins"], d["ins_p"], d["ins_s"],
+                "Penzijko (DPS/PP)", d["dps"], d["dps_p"], d["dps_s"]),
+        pf_data("Podnik. pojištění",  d["pod"], d["pod_p"], d["pod_s"],
+                "Hypotéka / Úvěr",  d["hyp"], d["hyp_p"], d["hyp_s"]),
     ]
 
-    pf_tbl = Table(pf_rows, colWidths=pf_cw)
+    pf_style = [
+        ("BACKGROUND",    (0,0), (-1,0),  BLUE),
+        ("ROWBACKGROUNDS",(0,1), (-1,-1), [WHITE, GRAY]),
+        ("TOPPADDING",    (0,0), (-1,-1), PAD),
+        ("BOTTOMPADDING", (0,0), (-1,-1), PAD),
+        ("LEFTPADDING",   (0,0), (-1,-1), PAD),
+        ("RIGHTPADDING",  (0,0), (-1,-1), PAD),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ("LINEBELOW",     (0,0), (-1,-1), 0.25, colors.HexColor("#cccccc")),
+        ("LINEAFTER",     (3,0), (3,-1),  0.8,  BLUE),
+        # group řádek 1 (index 1)
+        ("SPAN",       (0,1), (3,1)),
+        ("SPAN",       (4,1), (7,1)),
+        ("BACKGROUND", (0,1), (3,1), LBLUE),
+        ("BACKGROUND", (4,1), (7,1), LBLUE),
+        # group řádek 5 (index 5)
+        ("SPAN",       (0,5), (7,5)),
+        ("BACKGROUND", (0,5), (7,5), LBLUE),
+    ]
+    pf_tbl = Table(pf_rows, colWidths=cw_pf)
     pf_tbl.setStyle(TableStyle(pf_style))
     story.append(pf_tbl)
 
     if d["prispevek"]:
+        pr_cw = [W * 0.30, W * 0.70]
         pr = Table([[
             Paragraph("Příspěvek zaměstnavatele:", sLbl),
             Paragraph(d["prispevek"], sVal),
-        ]], colWidths=[W*0.28, W*0.72])
+        ]], colWidths=pr_cw)
         pr.setStyle(TableStyle([
-            ("BACKGROUND",    (0,0),(-1,-1), GRAY),
-            ("TOPPADDING",    (0,0),(-1,-1), 2),
-            ("BOTTOMPADDING", (0,0),(-1,-1), 2),
-            ("LEFTPADDING",   (0,0),(-1,-1), 5),
+            ("BACKGROUND",    (0,0), (-1,-1), GRAY),
+            ("TOPPADDING",    (0,0), (-1,-1), PAD),
+            ("BOTTOMPADDING", (0,0), (-1,-1), PAD),
+            ("LEFTPADDING",   (0,0), (-1,-1), PAD),
+            ("RIGHTPADDING",  (0,0), (-1,-1), PAD),
         ]))
         story.append(pr)
 
-    story.append(sp())
+    story.append(sp(3))
 
-    # ─────────────────────────────────────────────────────────
-    #  SEKCE 4 — KROKY
-    # ─────────────────────────────────────────────────────────
+    # ════════════════════════════════════════════════════════
+    #  SEC 4 — ZÁVĚR A KROKY
+    #  2 × 2 layout: [název | chip | mezera | název | chip]
+    #  0.39 + 0.07 + 0.04 + 0.39 + 0.11 = 1.00 ✓
+    # ════════════════════════════════════════════════════════
     story.append(sec_bar("4  |  ZÁVĚR A DALŠÍ KROKY"))
 
+    cw_k = [W*0.39, W*0.07, W*0.04, W*0.39, W*0.11]
     kroky = [
         ("Připravit srovnávací nabídku",         d["k_nabidka"]),
         ("Sjednat / Dopojistit produkty",        d["k_smlouva"]),
         ("Prověřit stávající smlouvy (audit)",   d["k_revize"]),
         ("Servisní schůzka / Aktualizace údajů", d["k_servis"]),
     ]
-    # 2 x 2 layout kroků
     k_rows = []
     for i in range(0, 4, 2):
         t1, v1 = kroky[i]
         t2, v2 = kroky[i+1]
         k_rows.append([
             Paragraph(t1, sCellL), chip(v1),
-            Paragraph("", sCell),
+            Paragraph("",  sCell),
             Paragraph(t2, sCellL), chip(v2),
         ])
-
-    k_tbl = Table(k_rows, colWidths=[W*0.38, W*0.08, W*0.04, W*0.38, W*0.12])
-    k_tbl.setStyle(TableStyle(base_style()))
+    k_tbl = Table(k_rows, colWidths=cw_k)
+    k_tbl.setStyle(TableStyle(base_ts()))
     story.append(k_tbl)
-    story.append(sp())
+    story.append(sp(3))
 
-    # ─────────────────────────────────────────────────────────
-    #  SEKCE 5 — POZNÁMKY
-    # ─────────────────────────────────────────────────────────
+    # ════════════════════════════════════════════════════════
+    #  SEC 5 — POZNÁMKY
+    # ════════════════════════════════════════════════════════
     story.append(sec_bar("5  |  DETAILNÍ POZNÁMKY"))
 
-    pozn_text = d["poznamky"].replace("\n", "<br/>") if d["poznamky"] else "— bez poznámek —"
+    pozn_text = (d["poznamky"].replace("\n", "<br/>")
+                 if d["poznamky"] else "— bez poznámek —")
     pozn = Table(
         [[Paragraph(pozn_text, sNote)]],
         colWidths=[W],
-        minRowHeights=[32],
+        minRowHeights=[30],
     )
     pozn.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),(-1,-1), WHITE),
-        ("BOX",           (0,0),(-1,-1), 0.5, BLUE),
-        ("TOPPADDING",    (0,0),(-1,-1), 5),
-        ("BOTTOMPADDING", (0,0),(-1,-1), 5),
-        ("LEFTPADDING",   (0,0),(-1,-1), 7),
+        ("BACKGROUND",    (0,0), (-1,-1), WHITE),
+        ("BOX",           (0,0), (-1,-1), 0.5, BLUE),
+        ("TOPPADDING",    (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ("LEFTPADDING",   (0,0), (-1,-1), 7),
+        ("RIGHTPADDING",  (0,0), (-1,-1), 7),
     ]))
     story.append(pozn)
-    story.append(sp(4))
+    story.append(sp(5))
 
-    # ─────────────────────────────────────────────────────────
+    # ════════════════════════════════════════════════════════
     #  PATIČKA
-    # ─────────────────────────────────────────────────────────
+    # ════════════════════════════════════════════════════════
     story.append(HRFlowable(width=W, thickness=0.5, color=BLUE))
     story.append(sp(2))
     story.append(Paragraph(
@@ -534,9 +552,9 @@ if odeslat:
             jmeno=jmeno, email=email, mobil=mobil, povolani=povolani,
             datum_schuzky=datum_schuzky, datum_kontaktu=datum_kontaktu,
             poradce=poradce,
-            t_vlastni=t_vlastni, t_rodina=t_rodina, t_deti=t_deti,
-            t_bydleni=t_bydleni, t_renta=t_renta, t_majetek=t_majetek,
-            t_podnik=t_podnik, t_dane=t_dane, t_uvery=t_uvery,
+            t_vlastni=t_vlastni, t_rodina=t_rodina,  t_deti=t_deti,
+            t_bydleni=t_bydleni, t_renta=t_renta,    t_majetek=t_majetek,
+            t_podnik=t_podnik,   t_dane=t_dane,       t_uvery=t_uvery,
             ziv=ziv, ziv_p=ziv_p, ziv_s=ziv_s,
             ura=ura, ura_p=ura_p, ura_s=ura_s,
             inv=inv, inv_p=inv_p, inv_s=inv_s,
