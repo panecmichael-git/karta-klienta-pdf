@@ -15,7 +15,7 @@ import io
 st.set_page_config(page_title="Karta klienta UNIQA", layout="wide")
 
 POJISTOVNY = ["-", "UNIQA", "Allianz", "Generali ČP", "Kooperativa", "ČPP", "ČSOB", "Pillow", "Direct", "MetLife", "KB"]
-STATUSY   = ["-", "Mám / OK", "Chci řešit", "Chci revizi", "Nezájem"]
+STATUSY    = ["-", "Mám / OK", "Chci řešit", "Chci revizi", "Nezájem"]
 
 UNIQA_BLUE  = colors.HexColor("#003399")
 UNIQA_LIGHT = colors.HexColor("#e8edf7")
@@ -118,9 +118,14 @@ def generuj_pdf(data: dict) -> bytes:
     # ── Styly ────────────────────────────────────────────────
     styles = getSampleStyleSheet()
 
+    # ✅ OPRAVA 1: fontName se NEdává napevno, použije se setdefault
     def style(name, parent="Normal", **kw):
-        return ParagraphStyle(name, parent=styles[parent],
-                              fontName="Helvetica", **kw)
+        kw.setdefault("fontName", "Helvetica")
+        return ParagraphStyle(name, parent=styles[parent], **kw)
+
+    # ✅ OPRAVA 2: Helper pro správný hex formát (#rrggbb) pro ReportLab Paragraph XML
+    def to_hex(c):
+        return "#%02x%02x%02x" % (int(c.red * 255), int(c.green * 255), int(c.blue * 255))
 
     s_header_title = style("HT", fontSize=18, textColor=WHITE,
                            alignment=TA_LEFT, leading=22,
@@ -148,18 +153,17 @@ def generuj_pdf(data: dict) -> bytes:
     # ── ZÁHLAVÍ (barevný banner) ──────────────────────────────
     header_data = [[
         Paragraph("DIGITÁLNÍ KARTA KLIENTA", s_header_title),
-        Paragraph(f"Uniqa pojišťovna, a.s.", s_header_sub),
+        Paragraph("Uniqa pojišťovna, a.s.", s_header_sub),
     ]]
     header_tbl = Table(header_data, colWidths=[W*0.65, W*0.35])
     header_tbl.setStyle(TableStyle([
-        ("BACKGROUND",  (0,0), (-1,-1), UNIQA_BLUE),
-        ("VALIGN",      (0,0), (-1,-1), "MIDDLE"),
-        ("LEFTPADDING", (0,0), (0,0), 10),
-        ("TOPPADDING",  (0,0), (-1,-1), 8),
-        ("BOTTOMPADDING",(0,0),(-1,-1), 8),
-        ("ALIGN",       (1,0), (1,0), "RIGHT"),
-        ("RIGHTPADDING",(1,0), (1,0), 10),
-        ("ROUNDEDCORNERS", [4,4,4,4]),
+        ("BACKGROUND",   (0,0), (-1,-1), UNIQA_BLUE),
+        ("VALIGN",       (0,0), (-1,-1), "MIDDLE"),
+        ("LEFTPADDING",  (0,0), (0,0), 10),
+        ("TOPPADDING",   (0,0), (-1,-1), 8),
+        ("BOTTOMPADDING",(0,0), (-1,-1), 8),
+        ("ALIGN",        (1,0), (1,0), "RIGHT"),
+        ("RIGHTPADDING", (1,0), (1,0), 10),
     ]))
     story.append(header_tbl)
     story.append(Spacer(1, 6))
@@ -179,30 +183,29 @@ def generuj_pdf(data: dict) -> bytes:
     def lv(label, value):
         return [Paragraph(label, s_label), Paragraph(str(value) if value else "—", s_value)]
 
-    # Helper: ANO/NE badge barva
+    # ✅ OPRAVA 2 aplikována: to_hex() místo color.hexval()
     def ano_ne(val):
-        text  = "✔  ANO" if val else "✘  NE"
-        color = colors.HexColor("#1a7a3c") if val else colors.HexColor("#b00020")
-        return Paragraph(f'<font color="{color.hexval()}">{text}</font>', s_cell)
+        text  = "ANO" if val else "NE"
+        hex_c = "#1a7a3c" if val else "#b00020"
+        return Paragraph(f'<font color="{hex_c}"><b>{text}</b></font>', s_cell)
 
     # ── SEKCE 1: Osobní údaje ────────────────────────────────
     story.append(sec_header("  1 |  OSOBNÍ ÚDAJE A SCHŮZKA"))
     story.append(Spacer(1, 4))
 
     os_data = [
-        lv("Jméno a příjmení",        data["jmeno"])   +
-        lv("Datum schůzky",           data["datum_schuzky"].strftime("%d.%m.%Y")),
-        lv("E-mail",                  data["email"])    +
-        lv("Datum nás. kontaktu",     data["datum_kontaktu"].strftime("%d.%m.%Y")),
-        lv("Mobilní telefon",         data["mobil"])    +
-        lv("Poradce / Kód",           data["poradce"]),
-        lv("Povolání / Zaměstnavatel",data["povolani"]) +
-        ["",""],
+        lv("Jméno a příjmení",         data["jmeno"])    +
+        lv("Datum schůzky",            data["datum_schuzky"].strftime("%d.%m.%Y")),
+        lv("E-mail",                   data["email"])    +
+        lv("Datum nás. kontaktu",      data["datum_kontaktu"].strftime("%d.%m.%Y")),
+        lv("Mobilní telefon",          data["mobil"])    +
+        lv("Poradce / Kód",            data["poradce"]),
+        lv("Povolání / Zaměstnavatel", data["povolani"]) +
+        ["", ""],
     ]
     os_tbl = Table(os_data, colWidths=[W*0.18, W*0.32, W*0.18, W*0.32])
     os_tbl.setStyle(TableStyle([
-        ("BACKGROUND",   (0,0),(-1,-1), UNIQA_GRAY),
-        ("ROWBACKGROUNDS",(0,0),(-1,-1),[WHITE, UNIQA_GRAY]),
+        ("ROWBACKGROUNDS",(0,0),(-1,-1), [WHITE, UNIQA_GRAY]),
         ("TOPPADDING",   (0,0),(-1,-1), 3),
         ("BOTTOMPADDING",(0,0),(-1,-1), 3),
         ("LEFTPADDING",  (0,0),(-1,-1), 6),
@@ -216,17 +219,16 @@ def generuj_pdf(data: dict) -> bytes:
     story.append(Spacer(1, 4))
 
     temata = [
-        ("Vlastní zajištění (příjem)",        data["t_vlastni"]),
-        ("Zajištění rodiny",                  data["t_rodina"]),
-        ("Zajištění dětí / Start do života",  data["t_deti"]),
-        ("Vlastní bydlení / Rekonstrukce",    data["t_bydleni"]),
-        ("Renta / Budoucí rezerva",           data["t_renta"]),
-        ("Ochrana majetku a auta",            data["t_majetek"]),
-        ("Podnikatelská rizika",              data["t_podnik"]),
-        ("Daňové úspory a efektivita",        data["t_dane"]),
-        ("Optimalizace úvěrů / Dluhů",        data["t_uvery"]),
+        ("Vlastní zajištění (příjem)",       data["t_vlastni"]),
+        ("Zajištění rodiny",                 data["t_rodina"]),
+        ("Zajištění dětí / Start do života", data["t_deti"]),
+        ("Vlastní bydlení / Rekonstrukce",   data["t_bydleni"]),
+        ("Renta / Budoucí rezerva",          data["t_renta"]),
+        ("Ochrana majetku a auta",           data["t_majetek"]),
+        ("Podnikatelská rizika",             data["t_podnik"]),
+        ("Daňové úspory a efektivita",       data["t_dane"]),
+        ("Optimalizace úvěrů / Dluhů",       data["t_uvery"]),
     ]
-    # Rozdělíme do 3 sloupců po 3
     rows = []
     for i in range(0, len(temata), 3):
         row = []
@@ -238,12 +240,12 @@ def generuj_pdf(data: dict) -> bytes:
 
     tem_tbl = Table(rows, colWidths=[W*0.26, W*0.07, W*0.26, W*0.07, W*0.26, W*0.07])
     tem_tbl.setStyle(TableStyle([
-        ("ROWBACKGROUNDS", (0,0),(-1,-1), [WHITE, UNIQA_GRAY]),
-        ("TOPPADDING",    (0,0),(-1,-1), 4),
-        ("BOTTOMPADDING", (0,0),(-1,-1), 4),
-        ("LEFTPADDING",   (0,0),(-1,-1), 6),
-        ("LINEBELOW",     (0,0),(-1,-1), 0.3, colors.HexColor("#cccccc")),
-        ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS",(0,0),(-1,-1), [WHITE, UNIQA_GRAY]),
+        ("TOPPADDING",   (0,0),(-1,-1), 4),
+        ("BOTTOMPADDING",(0,0),(-1,-1), 4),
+        ("LEFTPADDING",  (0,0),(-1,-1), 6),
+        ("LINEBELOW",    (0,0),(-1,-1), 0.3, colors.HexColor("#cccccc")),
+        ("VALIGN",       (0,0),(-1,-1), "MIDDLE"),
     ]))
     story.append(tem_tbl)
     story.append(Spacer(1, 8))
@@ -252,7 +254,6 @@ def generuj_pdf(data: dict) -> bytes:
     story.append(sec_header("  3 |  ANALÝZA PORTFOLIA"))
     story.append(Spacer(1, 4))
 
-    # Záhlaví tabulky
     def portfolio_header():
         return [
             Paragraph("Produkt",    s_cell_hdr),
@@ -261,40 +262,40 @@ def generuj_pdf(data: dict) -> bytes:
             Paragraph("Status",     s_cell_hdr),
         ]
 
+    # ✅ OPRAVA 2 aplikována: přímé hex stringy místo color.hexval()
     STATUS_COLORS = {
-        "Mám / OK":    colors.HexColor("#1a7a3c"),
-        "Chci řešit":  colors.HexColor("#e65c00"),
-        "Chci revizi": colors.HexColor("#8b0000"),
-        "Nezájem":     colors.HexColor("#888888"),
-        "-":           BLACK,
+        "Mám / OK":    "#1a7a3c",
+        "Chci řešit":  "#e65c00",
+        "Chci revizi": "#8b0000",
+        "Nezájem":     "#888888",
+        "-":           "#000000",
     }
 
     def status_par(s):
-        c = STATUS_COLORS.get(s, BLACK)
-        return Paragraph(f'<font color="{c.hexval()}"><b>{s}</b></font>', s_cell)
+        hex_c = STATUS_COLORS.get(s, "#000000")
+        return Paragraph(f'<font color="{hex_c}"><b>{s}</b></font>', s_cell)
 
     produkty = [
-        ("── Ochrana osob ──", None, None, None),
-        ("Životní pojištění", data["ziv"], data["ziv_p"], data["ziv_s"]),
-        ("Úraz / Nemoc",      data["ura"], data["ura_p"], data["ura_s"]),
-        ("Invalidita / Péče", data["inv"], data["inv_p"], data["inv_s"]),
-        ("── Majetek a Auto ──", None, None, None),
-        ("Dům / Byt / Odpovědnost", data["maj"], data["maj_p"], data["maj_s"]),
-        ("Auto (POV / HAV)",        data["aut"], data["aut_p"], data["aut_s"]),
-        ("── Finance a Podnikání ──", None, None, None),
-        ("Investice / DIP",          data["ins"], data["ins_p"], data["ins_s"]),
-        ("Penzijko (DPS/PP)",        data["dps"], data["dps_p"], data["dps_s"]),
-        ("Podnikatelské pojištění",  data["pod"], data["pod_p"], data["pod_s"]),
-        ("Hypotéka / Úvěr",         data["hyp"], data["hyp_p"], data["hyp_s"]),
+        ("── Ochrana osob ──",         None, None, None),
+        ("Životní pojištění",          data["ziv"], data["ziv_p"], data["ziv_s"]),
+        ("Úraz / Nemoc",               data["ura"], data["ura_p"], data["ura_s"]),
+        ("Invalidita / Péče",          data["inv"], data["inv_p"], data["inv_s"]),
+        ("── Majetek a Auto ──",        None, None, None),
+        ("Dům / Byt / Odpovědnost",    data["maj"], data["maj_p"], data["maj_s"]),
+        ("Auto (POV / HAV)",           data["aut"], data["aut_p"], data["aut_s"]),
+        ("── Finance a Podnikání ──",   None, None, None),
+        ("Investice / DIP",            data["ins"], data["ins_p"], data["ins_s"]),
+        ("Penzijko (DPS/PP)",          data["dps"], data["dps_p"], data["dps_s"]),
+        ("Podnikatelské pojištění",    data["pod"], data["pod_p"], data["pod_s"]),
+        ("Hypotéka / Úvěr",           data["hyp"], data["hyp_p"], data["hyp_s"]),
     ]
 
     pf_rows    = [portfolio_header()]
-    group_rows = []  # indexy skupinových řádků (nadpisy)
+    group_rows = []
 
     for i, (prod, zajem, poj, stat) in enumerate(produkty):
-        row_idx = i + 1  # +1 kvůli záhlaví
+        row_idx = i + 1
         if zajem is None:
-            # skupinový nadpis
             group_rows.append(row_idx)
             pf_rows.append([
                 Paragraph(prod, ParagraphStyle(
@@ -313,24 +314,23 @@ def generuj_pdf(data: dict) -> bytes:
 
     pf_tbl = Table(pf_rows, colWidths=[W*0.42, W*0.13, W*0.22, W*0.23])
     style_cmds = [
-        ("BACKGROUND",   (0,0),(-1,0), UNIQA_BLUE),
-        ("ROWBACKGROUNDS",(0,1),(-1,-1),[WHITE, UNIQA_GRAY]),
-        ("TOPPADDING",   (0,0),(-1,-1), 4),
-        ("BOTTOMPADDING",(0,0),(-1,-1), 4),
-        ("LEFTPADDING",  (0,0),(-1,-1), 6),
-        ("LINEBELOW",    (0,0),(-1,-1), 0.3, colors.HexColor("#cccccc")),
-        ("VALIGN",       (0,0),(-1,-1), "MIDDLE"),
-        ("SPAN",         (0, group_rows[0]), (-1, group_rows[0])),
-        ("SPAN",         (0, group_rows[1]), (-1, group_rows[1])),
-        ("SPAN",         (0, group_rows[2]), (-1, group_rows[2])),
-        ("BACKGROUND",   (0, group_rows[0]), (-1, group_rows[0]), UNIQA_LIGHT),
-        ("BACKGROUND",   (0, group_rows[1]), (-1, group_rows[1]), UNIQA_LIGHT),
-        ("BACKGROUND",   (0, group_rows[2]), (-1, group_rows[2]), UNIQA_LIGHT),
+        ("BACKGROUND",    (0,0), (-1,0), UNIQA_BLUE),
+        ("ROWBACKGROUNDS",(0,1), (-1,-1), [WHITE, UNIQA_GRAY]),
+        ("TOPPADDING",    (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ("LEFTPADDING",   (0,0), (-1,-1), 6),
+        ("LINEBELOW",     (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ("SPAN",          (0, group_rows[0]), (-1, group_rows[0])),
+        ("SPAN",          (0, group_rows[1]), (-1, group_rows[1])),
+        ("SPAN",          (0, group_rows[2]), (-1, group_rows[2])),
+        ("BACKGROUND",    (0, group_rows[0]), (-1, group_rows[0]), UNIQA_LIGHT),
+        ("BACKGROUND",    (0, group_rows[1]), (-1, group_rows[1]), UNIQA_LIGHT),
+        ("BACKGROUND",    (0, group_rows[2]), (-1, group_rows[2]), UNIQA_LIGHT),
     ]
     pf_tbl.setStyle(TableStyle(style_cmds))
     story.append(pf_tbl)
 
-    # Příspěvek zaměstnavatele
     if data["prispevek"]:
         story.append(Spacer(1, 3))
         tbl = Table([[
@@ -352,24 +352,20 @@ def generuj_pdf(data: dict) -> bytes:
     story.append(Spacer(1, 4))
 
     kroky = [
-        ("Připravit srovnávací nabídku",            data["k_nabidka"]),
-        ("Sjednat / Dopojistit produkty",           data["k_smlouva"]),
-        ("Prověřit stávající smlouvy (audit)",      data["k_revize"]),
-        ("Servisní schůzka / Aktualizace údajů",    data["k_servis"]),
+        ("Připravit srovnávací nabídku",         data["k_nabidka"]),
+        ("Sjednat / Dopojistit produkty",        data["k_smlouva"]),
+        ("Prověřit stávající smlouvy (audit)",   data["k_revize"]),
+        ("Servisní schůzka / Aktualizace údajů", data["k_servis"]),
     ]
-    k_rows = [[
-        Paragraph(t, s_cell_l),
-        ano_ne(v),
-    ] for t, v in kroky]
-
+    k_rows = [[Paragraph(t, s_cell_l), ano_ne(v)] for t, v in kroky]
     k_tbl = Table(k_rows, colWidths=[W*0.82, W*0.18])
     k_tbl.setStyle(TableStyle([
-        ("ROWBACKGROUNDS", (0,0),(-1,-1), [WHITE, UNIQA_GRAY]),
-        ("TOPPADDING",    (0,0),(-1,-1), 5),
-        ("BOTTOMPADDING", (0,0),(-1,-1), 5),
-        ("LEFTPADDING",   (0,0),(-1,-1), 8),
-        ("LINEBELOW",     (0,0),(-1,-1), 0.3, colors.HexColor("#cccccc")),
-        ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS",(0,0),(-1,-1), [WHITE, UNIQA_GRAY]),
+        ("TOPPADDING",   (0,0),(-1,-1), 5),
+        ("BOTTOMPADDING",(0,0),(-1,-1), 5),
+        ("LEFTPADDING",  (0,0),(-1,-1), 8),
+        ("LINEBELOW",    (0,0),(-1,-1), 0.3, colors.HexColor("#cccccc")),
+        ("VALIGN",       (0,0),(-1,-1), "MIDDLE"),
     ]))
     story.append(k_tbl)
     story.append(Spacer(1, 8))
