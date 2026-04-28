@@ -347,11 +347,12 @@ def generuj_pdf(d: dict) -> bytes:
     # ════════════════════════════════════════════════════════
     story.append(sec_bar("2  |  HLAVNÍ TÉMATA K ŘEŠENÍ"))
 
-    # Širší sloupec pro text, užší pro chip
-    C_TEM  = W * 0.295
-    C_CHIP = W * 0.038
-    C_CHIP_LAST = W - 3 * C_TEM - 2 * C_CHIP
-    cw_tem = [C_TEM, C_CHIP, C_TEM, C_CHIP, C_TEM, C_CHIP_LAST]
+    # Sloupec pro chip musí být dost široký, aby se "ANO" vešlo na 1 řádek.
+    # Při fontu 7.5pt + tučné + padding 3pt z každé strany potřebujeme cca
+    # 28-30 pt. W je cca 538 pt, takže C_CHIP = 0.060 * W ≈ 32 pt — bezpečné.
+    C_CHIP = W * 0.060
+    C_TEM  = (W - 3 * C_CHIP) / 3
+    cw_tem = [C_TEM, C_CHIP, C_TEM, C_CHIP, C_TEM, C_CHIP]
 
     temata = [
         ("Vlastní zajištění (příjem)",          d["t_vlastni"]),
