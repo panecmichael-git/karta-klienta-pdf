@@ -15,15 +15,59 @@ import os
 import io
 
 # ─────────────────────────────────────────────────────────────
-#  REGISTRACE UNICODE FONTU (soubory jsou v repozitáři)
+#  REGISTRACE FONTU — Liberation Sans (systémový, bez stahování)
 # ─────────────────────────────────────────────────────────────
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-FONT_NORMAL = "DejaVuSans"
-FONT_BOLD   = "DejaVuSans-Bold"
+# Možné cesty k Liberation Sans na různých systémech
+FONT_SEARCH_PATHS = [
+    # Streamlit Cloud / Ubuntu / Debian
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+    # macOS
+    "/Library/Fonts/Liberation Sans.ttf",
+    # Windows
+    "C:/Windows/Fonts/LiberationSans-Regular.ttf",
+]
 
-pdfmetrics.registerFont(TTFont(FONT_NORMAL, os.path.join(BASE_DIR, "DejaVuSans.ttf")))
-pdfmetrics.registerFont(TTFont(FONT_BOLD,   os.path.join(BASE_DIR, "DejaVuSans-Bold.ttf")))
+FONT_BOLD_SEARCH_PATHS = [
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+    "/Library/Fonts/Liberation Sans Bold.ttf",
+    "C:/Windows/Fonts/LiberationSans-Bold.ttf",
+]
+
+def find_font(paths):
+    for p in paths:
+        if os.path.exists(p):
+            return p
+    return None
+
+font_regular_path = find_font(FONT_SEARCH_PATHS)
+font_bold_path    = find_font(FONT_BOLD_SEARCH_PATHS)
+
+if font_regular_path and font_bold_path:
+    pdfmetrics.registerFont(TTFont("AppFont",     font_regular_path))
+    pdfmetrics.registerFont(TTFont("AppFont-Bold", font_bold_path))
+    FONT_NORMAL = "AppFont"
+    FONT_BOLD   = "AppFont-Bold"
+else:
+    # Záložní řešení — stažení Noto Sans z Google Fonts CDN
+    import urllib.request, tempfile
+    FONT_DIR = tempfile.gettempdir()
+
+    NOTO_URLS = {
+        "AppFont":      "https://fonts.gstatic.com/s/notosans/v36/o-0IIpQlx3QUlC5A4PNb4j5Ba_2c7A.ttf",
+        "AppFont-Bold": "https://fonts.gstatic.com/s/notosans/v36/o-0NIpQlx3QUlC5A4PNjXhFVadyB1Wk.ttf",
+    }
+
+    for name, url in NOTO_URLS.items():
+        path = os.path.join(FONT_DIR, f"{name}.ttf")
+        if not os.path.exists(path):
+            urllib.request.urlretrieve(url, path)
+        pdfmetrics.registerFont(TTFont(name, path))
+
+    FONT_NORMAL = "AppFont"
+    FONT_BOLD   = "AppFont-Bold"
 
 # --- NASTAVENÍ STRÁNKY ---
 st.set_page_config(page_title="Karta klienta UNIQA", layout="wide")
@@ -157,7 +201,6 @@ def generuj_pdf(data: dict) -> bytes:
                            fontName=FONT_BOLD)
 
     W = A4[0] - 30*mm
-
     story = []
 
     # ── ZÁHLAVÍ ──────────────────────────────────────────────
@@ -214,7 +257,6 @@ def generuj_pdf(data: dict) -> bytes:
     # ── SEKCE 1 ──────────────────────────────────────────────
     story.append(sec_header("  1 |  OSOBNÍ ÚDAJE A SCHŮZKA"))
     story.append(Spacer(1, 4))
-
     os_data = [
         lv("Jméno a příjmení",         data["jmeno"])    +
         lv("Datum schůzky",            data["datum_schuzky"].strftime("%d.%m.%Y")),
@@ -238,7 +280,6 @@ def generuj_pdf(data: dict) -> bytes:
     # ── SEKCE 2 ──────────────────────────────────────────────
     story.append(sec_header("  2 |  HLAVNÍ TÉMATA K ŘEŠENÍ"))
     story.append(Spacer(1, 4))
-
     temata = [
         ("Vlastní zajištění (příjem)",       data["t_vlastni"]),
         ("Zajištění rodiny",                 data["t_rodina"]),
@@ -258,5 +299,32 @@ def generuj_pdf(data: dict) -> bytes:
         while len(row) < 6:
             row += ["", ""]
         rows.append(row)
+    tem_tbl = Table(rows, colWidths=[W*0.26, W*0.07, W*0.26, W*0.07, W*0.26, W*0.07])
+    tem_tbl.setStyle(TableStyle([
+        ("ROWBACKGROUNDS",(0,0),(-1,-1), [WHITE, UNIQA_GRAY]),
+        ("TOPPADDING",   (0,0),(-1,-1), 4),
+        ("BOTTOMPADDING",(0,0),(-1,-1), 4),
+        ("LEFTPADDING",  (0,0),(-1,-1), 6),
+        ("LINEBELOW",    (0,0),(-1,-1), 0.3, colors.HexColor("#cccccc")),
+        ("VALIGN",       (0,0),(-1,-1), "MIDDLE"),
+    ]))
+    story.append(tem_tbl)
+    story.append(Spacer(1, 8))
 
-    tem_tbl = Table(rows, colWidths=[W*0.26, W*0.07, W*0.26,
+    # ── SEKCE 3 ──────────────────────────────────────────────
+    story.append(sec_header("  3 |  ANALÝZA PORTFOLIA"))
+    story.append(Spacer(1, 4))
+
+    def portfolio_header():
+        return [
+            Paragraph("Produkt",    s_cell_hdr),
+            Paragraph("Zájem",      s_cell_hdr),
+            Paragraph("Pojišťovna", s_cell_hdr),
+            Paragraph("Status",     s_cell_hdr),
+        ]
+
+    produkty = [
+        ("── Ochrana osob ──",         None, None, None),
+        ("Životní pojištění",          data["ziv"], data["ziv_p"], data["ziv_s"]),
+        ("Úraz / Nemoc",               data["ura"], data["ura_p"], data["ura_s"]),
+        ("Invalidita / Péče",          data["inv"], data["inv_p"], data[
