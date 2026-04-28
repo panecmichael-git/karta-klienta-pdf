@@ -1,0 +1,1 @@
+# karta-klienta-pdf
