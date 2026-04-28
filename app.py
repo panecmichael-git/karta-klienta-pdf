@@ -71,7 +71,7 @@ DGRAY = colors.HexColor("#888888")
 # ─────────────────────────────────────────────────────────────
 #  STREAMLIT UI
 # ─────────────────────────────────────────────────────────────
-st.set_page_config(page_title="Karta klienta UNIQA", layout="wide")
+st.set_page_config(page_title="Karta klienta", layout="wide")
 
 POJISTOVNY = ["-", "UNIQA", "Allianz", "Generali ČP", "Kooperativa",
               "ČPP", "ČSOB", "Pillow", "Direct", "MetLife", "KB"]
@@ -84,7 +84,7 @@ h1 { color: #003399; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("📄 Digitální Karta Klienta UNIQA")
+st.title("📄 Digitální Karta Klienta")
 
 with st.form("form"):
     st.subheader("👤 Osobní údaje")
@@ -218,6 +218,9 @@ def generuj_pdf(d: dict) -> bytes:
                 alignment=TA_CENTER)
     sCellL  = S("cl", fontSize=7.5, textColor=BLACK, leading=9,
                 alignment=TA_LEFT)
+    # MENŠÍ font pro témata, aby se text vešel na jeden řádek
+    sCellTema = S("ct", fontSize=6.8, textColor=BLACK, leading=8,
+                  alignment=TA_LEFT)
     sGroup  = S("gr", fontSize=7,   fontName=FNB, textColor=BLUE, leading=9)
     sNote   = S("nt", fontSize=7.5, textColor=BLACK, leading=10)
     sFooter = S("ft", fontSize=6,   textColor=DGRAY, alignment=TA_CENTER)
@@ -285,7 +288,6 @@ def generuj_pdf(d: dict) -> bytes:
     hdr = Table([[
         Paragraph("DIGITÁLNÍ KARTA KLIENTA", sTitle),
         Paragraph(
-            f"UNIQA pojišťovna, a.s.<br/>"
             f"Poradce: <b>{d['poradce']}</b>  |  {ts}",
             sSub),
     ]], colWidths=[W * 0.60, W * 0.40])
@@ -303,19 +305,12 @@ def generuj_pdf(d: dict) -> bytes:
 
     # ════════════════════════════════════════════════════════
     #  SEC 1 — OSOBNÍ ÚDAJE
-    #  4 sloupce: [label  |  hodnota  |  label  |  hodnota]
-    #  Součet = W
     # ════════════════════════════════════════════════════════
     story.append(sec_bar("1  |  OSOBNÍ ÚDAJE A SCHŮZKA"))
 
     C_LBL = W * 0.18   # label
     C_VAL = W * 0.32   # hodnota
-    # 2× (label + hodnota) = 2×0.18 + 2×0.32 = 1.00 ✓
     cw_os = [C_LBL, C_VAL, C_LBL, C_VAL]
-
-    def lv(lbl, val):
-        return [Paragraph(lbl, sLbl), Paragraph(val or "—", sVal),
-                None, None]   # 3. a 4. buňka se nastaví níže
 
     os_rows = [
         [Paragraph("Jméno a příjmení",    sLbl),
@@ -345,34 +340,35 @@ def generuj_pdf(d: dict) -> bytes:
 
     # ════════════════════════════════════════════════════════
     #  SEC 2 — TÉMATA
-    #  3 skupiny vedle sebe: [název | chip] [název | chip] [název | chip]
-    #  Šířky: 3 × (název + chip) = 3 × (0.29 + 0.045) = 3 × 0.335 = ~1.005
-    #  Zaokrouhlíme: 3 × (0.288 + 0.045) = 3 × 0.333 = 0.999 → +0.001 na poslední chip
+    #  Rozšířené sloupce pro názvy + menší font, aby se vešel
+    #  celý text ("Vlastní bydlení / Rekonstrukce", "Start do
+    #  života", "Daňové úspory a efektivita", "Optimalizace
+    #  úvěrů / Dluhů").
     # ════════════════════════════════════════════════════════
     story.append(sec_bar("2  |  HLAVNÍ TÉMATA K ŘEŠENÍ"))
 
-    C_TEM  = W * 0.288   # název tématu
-    C_CHIP = W * 0.045   # chip ANO/NE
-    # 3 páry = 6 sloupců; 3×0.288 + 3×0.045 = 0.864 + 0.135 = 0.999 → zbytek 0.001*W do posledního chipu
-    C_CHIP_LAST = W - 2 * C_TEM - 2 * C_CHIP - C_TEM
+    # Širší sloupec pro text, užší pro chip
+    C_TEM  = W * 0.295
+    C_CHIP = W * 0.038
+    C_CHIP_LAST = W - 3 * C_TEM - 2 * C_CHIP
     cw_tem = [C_TEM, C_CHIP, C_TEM, C_CHIP, C_TEM, C_CHIP_LAST]
 
     temata = [
-        ("Vlastní zajištění (příjem)",       d["t_vlastni"]),
-        ("Zajištění rodiny",                 d["t_rodina"]),
-        ("Zajištění dětí / Start",           d["t_deti"]),
-        ("Bydlení / Rekonstrukce",           d["t_bydleni"]),
-        ("Renta / Budoucí rezerva",          d["t_renta"]),
-        ("Ochrana majetku a auta",           d["t_majetek"]),
-        ("Podnikatelská rizika",             d["t_podnik"]),
-        ("Daňové úspory",                    d["t_dane"]),
-        ("Optimalizace úvěrů",               d["t_uvery"]),
+        ("Vlastní zajištění (příjem)",          d["t_vlastni"]),
+        ("Zajištění rodiny",                    d["t_rodina"]),
+        ("Zajištění dětí / Start do života",    d["t_deti"]),
+        ("Vlastní bydlení / Rekonstrukce",      d["t_bydleni"]),
+        ("Renta / Budoucí rezerva",             d["t_renta"]),
+        ("Ochrana majetku a auta",              d["t_majetek"]),
+        ("Podnikatelská rizika",                d["t_podnik"]),
+        ("Daňové úspory a efektivita",          d["t_dane"]),
+        ("Optimalizace úvěrů / Dluhů",          d["t_uvery"]),
     ]
     t_rows = []
     for i in range(0, 9, 3):
         row = []
         for txt, val in temata[i:i+3]:
-            row.append(Paragraph(txt, sCellL))
+            row.append(Paragraph(txt, sCellTema))
             row.append(chip(val))
         t_rows.append(row)
 
@@ -383,21 +379,13 @@ def generuj_pdf(d: dict) -> bytes:
 
     # ════════════════════════════════════════════════════════
     #  SEC 3 — PORTFOLIO
-    #  Dual-column: levá polovina | pravá polovina
-    #  Každá polovina: [produkt | zájem | pojišťovna | status]
-    #  Polovina šířky = W/2 = 0.50W
-    #  Sloupce v jedné polovině: 0.22 | 0.07 | 0.12 | 0.09 = 0.50 ✓
     # ════════════════════════════════════════════════════════
     story.append(sec_bar("3  |  ANALÝZA PORTFOLIA"))
 
-    # Přesné šířky — dvě sady po 4 sloupcích, součet = W
     A = W * 0.220   # produkt
     B = W * 0.068   # zájem
     C = W * 0.116   # pojišťovna
     D = W * 0.096   # status
-    # Levá polovina: A+B+C+D = 0.500
-    # Pravá polovina stejná: A+B+C+D = 0.500
-    # Celkem: 1.000 ✓
     cw_pf = [A, B, C, D, A, B, C, D]
 
     def pf_hdr():
@@ -445,12 +433,10 @@ def generuj_pdf(d: dict) -> bytes:
         ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
         ("LINEBELOW",     (0,0), (-1,-1), 0.25, colors.HexColor("#cccccc")),
         ("LINEAFTER",     (3,0), (3,-1),  0.8,  BLUE),
-        # group řádek 1 (index 1)
         ("SPAN",       (0,1), (3,1)),
         ("SPAN",       (4,1), (7,1)),
         ("BACKGROUND", (0,1), (3,1), LBLUE),
         ("BACKGROUND", (4,1), (7,1), LBLUE),
-        # group řádek 5 (index 5)
         ("SPAN",       (0,5), (7,5)),
         ("BACKGROUND", (0,5), (7,5), LBLUE),
     ]
@@ -477,8 +463,6 @@ def generuj_pdf(d: dict) -> bytes:
 
     # ════════════════════════════════════════════════════════
     #  SEC 4 — ZÁVĚR A KROKY
-    #  2 × 2 layout: [název | chip | mezera | název | chip]
-    #  0.39 + 0.07 + 0.04 + 0.39 + 0.11 = 1.00 ✓
     # ════════════════════════════════════════════════════════
     story.append(sec_bar("4  |  ZÁVĚR A DALŠÍ KROKY"))
 
@@ -533,7 +517,7 @@ def generuj_pdf(d: dict) -> bytes:
     story.append(sp(2))
     story.append(Paragraph(
         f"Vygenerováno: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}  |  "
-        f"Poradce: {d['poradce']}  |  UNIQA pojišťovna, a.s.  |  Důvěrný dokument",
+        f"Poradce: {d['poradce']}  |  Důvěrný dokument",
         sFooter
     ))
 
