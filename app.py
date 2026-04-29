@@ -75,7 +75,9 @@ st.set_page_config(page_title="Karta klienta", layout="wide")
 
 POJISTOVNY = ["-", "UNIQA", "Allianz", "Generali ČP", "Kooperativa",
               "ČPP", "ČSOB", "Pillow", "Direct", "MetLife", "KB"]
-BANKY = ["-","Air Bank","AXA","Citibank","Česká spořitelna","ČSOB","Equa bank","Fio banka","GE Money Bank","ING Bank N. V.","J&T BANKA","Komerční banka","mBank","Oberbank AG","Poštovní spořitelna","Raiffeisenbank","UniCredit Bank"]
+BANKY = ["-","Air Bank","AXA","Citibank","Česká spořitelna","Českomoravská stavební spořitelna","ČSOB","Equa bank","Fio banka","GE Money Bank","Hypoteční banka","ING Bank N. V.","J&T BANKA",
+         "Komerční banka","mBank","Modrá pyramida stavební spořitelna","Oberbank AG","Poštovní spořitelna","Raiffeisen stavební spořitelna","Raiffeisenbank","Stavební spořitelna České spořitelny",
+         "UniCredit Bank","Wüstenrot – stavební spořitelna","Wüstenrot hypoteční banka"]
 STATUSY    = ["-", "Mám / OK", "Chci řešit", "Chci revizi", "Nezájem"]
 
 st.markdown("""
