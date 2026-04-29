@@ -160,7 +160,7 @@ with st.form("form"):
         prispevek = st.text_input("Příspěvek zaměstnavatele:")
         r1,r2,r3 = st.columns([2,1,1])
         hyp   = r1.checkbox("Hypotéka / Úvěr")
-        hyp_p = r2.selectbox("Banka", POJISTOVNY, key="p9")
+        hyp_p = r2.selectbox("Banka", BANKY, key="p9")
         hyp_s = r3.selectbox("Stat.", STATUSY,    key="s9")
 
     st.divider()
