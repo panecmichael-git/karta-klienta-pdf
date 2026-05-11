@@ -139,7 +139,11 @@ with st.form("form"):
             value="(vyplní se v PDF)",
             disabled=True,
         )
-        email = st.text_input("E-mail")
+        email = st.text_input(
+            "E-mail",
+            value="(vyplní se v PDF)",
+            disabled=True,
+        )
     with c2:
         mobil = st.text_input(
             "Mobilní telefon",
