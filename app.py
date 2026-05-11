@@ -73,8 +73,10 @@ FIELD_BG = colors.HexColor("#f9faff")
 #  ACROFORM POLE (Flowable)
 # ─────────────────────────────────────────────────────────────
 class FormField(Flowable):
-    """Interaktivní textové pole v PDF (AcroForm)."""
-    def __init__(self, name, width, height, font_name="F", font_size=9):
+    """Interaktivní textové pole v PDF (AcroForm).
+    Pozn.: AcroForm v ReportLabu povoluje pouze standardních 14 PDF fontů
+    (Helvetica, Times-Roman, Courier a varianty), proto Helvetica."""
+    def __init__(self, name, width, height, font_name="Helvetica", font_size=9):
         super().__init__()
         self.name = name
         self.width = width
@@ -137,11 +139,7 @@ with st.form("form"):
             value="(vyplní se v PDF)",
             disabled=True,
         )
-        email = st.text_input(
-            "email",
-            value="(vyplní se v PDF)",
-            disabled=True,
-        )
+        email = st.text_input("E-mail")
     with c2:
         mobil = st.text_input(
             "Mobilní telefon",
@@ -240,8 +238,6 @@ with st.form("form"):
 def generuj_pdf(d: dict) -> bytes:
     buf = io.BytesIO()
 
-    # A4 = 595.27 x 841.89 pt
-    # Okraje 10mm každá strana → W = 595.27 - 20mm = 595.27 - 56.69 ≈ 538.58 pt
     LEFT = RIGHT = 10 * mm
     TOP  = 8  * mm
     BOT  = 6  * mm
@@ -253,9 +249,8 @@ def generuj_pdf(d: dict) -> bytes:
     )
 
     gs  = getSampleStyleSheet()
-    W   = A4[0] - LEFT - RIGHT   # přesná šířka obsahu v bodech
+    W   = A4[0] - LEFT - RIGHT
 
-    # ── styly ────────────────────────────────────────────────
     def S(name, **kw):
         kw.setdefault("fontName", FN)
         kw.setdefault("fontSize", 8)
@@ -276,21 +271,17 @@ def generuj_pdf(d: dict) -> bytes:
                 alignment=TA_CENTER)
     sCellL  = S("cl", fontSize=7.5, textColor=BLACK, leading=9,
                 alignment=TA_LEFT)
-    # MENŠÍ font pro témata, aby se text vešel na jeden řádek
     sCellTema = S("ct", fontSize=6.8, textColor=BLACK, leading=8,
                   alignment=TA_LEFT)
     sGroup  = S("gr", fontSize=7,   fontName=FNB, textColor=BLUE, leading=9)
     sNote   = S("nt", fontSize=7.5, textColor=BLACK, leading=10)
     sFooter = S("ft", fontSize=6,   textColor=DGRAY, alignment=TA_CENTER)
 
-    # ── pomocné ───────────────────────────────────────────────
     sp = lambda n=3: Spacer(1, n)
 
-    # Padding pro buňky — MUSÍ být malý, aby colWidths nevyšly záporně
-    PAD = 3   # pt
+    PAD = 3
 
     def base_ts(extra=None):
-        """Základní TableStyle — bez negat. šířky."""
         s = [
             ("ROWBACKGROUNDS", (0,0), (-1,-1), [WHITE, GRAY]),
             ("TOPPADDING",     (0,0), (-1,-1), PAD),
@@ -342,7 +333,6 @@ def generuj_pdf(d: dict) -> bytes:
     # ════════════════════════════════════════════════════════
     ts = datetime.now().strftime("%d.%m.%Y  %H:%M")
 
-    # Přesné colWidths = W
     hdr = Table([[
         Paragraph("DIGITÁLNÍ KARTA KLIENTA", sTitle),
         Paragraph(
@@ -366,17 +356,16 @@ def generuj_pdf(d: dict) -> bytes:
     # ════════════════════════════════════════════════════════
     story.append(sec_bar("1  |  OSOBNÍ ÚDAJE A SCHŮZKA"))
 
-    C_LBL = W * 0.18   # label
-    C_VAL = W * 0.32   # hodnota
+    C_LBL = W * 0.18
+    C_VAL = W * 0.32
     cw_os = [C_LBL, C_VAL, C_LBL, C_VAL]
 
-    # Výška formulářového pole
     FIELD_H = 13
     FIELD_W = C_VAL - 2 * PAD
 
     os_rows = [
         [Paragraph("Jméno a příjmení",    sLbl),
-         FormField("jmeno", FIELD_W, FIELD_H, FN, 9),
+         FormField("jmeno", FIELD_W, FIELD_H),
          Paragraph("Datum schůzky",       sLbl),
          Paragraph(d["datum_schuzky"].strftime("%d.%m.%Y"), sVal)],
 
@@ -386,12 +375,12 @@ def generuj_pdf(d: dict) -> bytes:
          Paragraph(d["datum_kontaktu"].strftime("%d.%m.%Y"), sVal)],
 
         [Paragraph("Mobilní telefon",     sLbl),
-         FormField("mobil", FIELD_W, FIELD_H, FN, 9),
+         FormField("mobil", FIELD_W, FIELD_H),
          Paragraph("Poradce / Kód",       sLbl),
          Paragraph(d["poradce"] or "—",   sVal)],
 
         [Paragraph("Povolání",            sLbl),
-         FormField("povolani", FIELD_W, FIELD_H, FN, 9),
+         FormField("povolani", FIELD_W, FIELD_H),
          Paragraph("", sLbl),
          Paragraph("", sVal)],
     ]
@@ -438,10 +427,10 @@ def generuj_pdf(d: dict) -> bytes:
     # ════════════════════════════════════════════════════════
     story.append(sec_bar("3  |  ANALÝZA PORTFOLIA"))
 
-    A = W * 0.220   # produkt
-    B = W * 0.068   # zájem
-    C = W * 0.116   # pojišťovna
-    D = W * 0.096   # status
+    A = W * 0.220
+    B = W * 0.068
+    C = W * 0.116
+    D = W * 0.096
     cw_pf = [A, B, C, D, A, B, C, D]
 
     def pf_hdr():
