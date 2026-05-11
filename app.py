@@ -5,7 +5,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import mm
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Flowable
 )
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 from reportlab.pdfbase import pdfmetrics
@@ -67,6 +67,40 @@ GRAY  = colors.HexColor("#f4f5f7")
 WHITE = colors.white
 BLACK = colors.black
 DGRAY = colors.HexColor("#888888")
+FIELD_BG = colors.HexColor("#f9faff")
+
+# ─────────────────────────────────────────────────────────────
+#  ACROFORM POLE (Flowable)
+# ─────────────────────────────────────────────────────────────
+class FormField(Flowable):
+    """Interaktivní textové pole v PDF (AcroForm)."""
+    def __init__(self, name, width, height, font_name="F", font_size=9):
+        super().__init__()
+        self.name = name
+        self.width = width
+        self.height = height
+        self.font_name = font_name
+        self.font_size = font_size
+
+    def wrap(self, availWidth, availHeight):
+        return self.width, self.height
+
+    def draw(self):
+        self.canv.acroForm.textfield(
+            name=self.name,
+            tooltip=self.name,
+            x=0, y=0,
+            width=self.width,
+            height=self.height,
+            borderColor=BLUE,
+            fillColor=FIELD_BG,
+            textColor=BLACK,
+            forceBorder=True,
+            borderWidth=0.5,
+            borderStyle="underlined",
+            fontName=self.font_name,
+            fontSize=self.font_size,
+        )
 
 # ─────────────────────────────────────────────────────────────
 #  STREAMLIT UI
@@ -89,15 +123,32 @@ h1 { color: #003399; }
 
 st.title("📄 Digitální Karta Klienta")
 
+st.info(
+    "ℹ️ Pole **Jméno a příjmení**, **Mobilní telefon** a **Povolání / Zaměstnavatel** "
+    "se vyplňují interaktivně přímo v PDF (otevřete v Adobe Acrobat Reader)."
+)
+
 with st.form("form"):
     st.subheader("👤 Osobní údaje")
     c1, c2, c3 = st.columns(3)
     with c1:
-        jmeno   = st.text_input("Jméno a příjmení")
-        email   = st.text_input("E-mail")
+        jmeno = st.text_input(
+            "Jméno a příjmení",
+            value="(vyplní se v PDF)",
+            disabled=True,
+        )
+        email = st.text_input("E-mail")
     with c2:
-        mobil    = st.text_input("Mobilní telefon")
-        povolani = st.text_input("Povolání / Zaměstnavatel")
+        mobil = st.text_input(
+            "Mobilní telefon",
+            value="(vyplní se v PDF)",
+            disabled=True,
+        )
+        povolani = st.text_input(
+            "Povolání / Zaměstnavatel",
+            value="(vyplní se v PDF)",
+            disabled=True,
+        )
     with c3:
         datum_schuzky  = st.date_input("Datum schůzky",      value=datetime.now())
         datum_kontaktu = st.date_input("Datum nás. kontaktu", value=datetime.now() + timedelta(days=90))
@@ -315,9 +366,13 @@ def generuj_pdf(d: dict) -> bytes:
     C_VAL = W * 0.32   # hodnota
     cw_os = [C_LBL, C_VAL, C_LBL, C_VAL]
 
+    # Výška formulářového pole
+    FIELD_H = 13
+    FIELD_W = C_VAL - 2 * PAD
+
     os_rows = [
         [Paragraph("Jméno a příjmení",    sLbl),
-         Paragraph(d["jmeno"] or "—",     sVal),
+         FormField("jmeno", FIELD_W, FIELD_H, FN, 9),
          Paragraph("Datum schůzky",       sLbl),
          Paragraph(d["datum_schuzky"].strftime("%d.%m.%Y"), sVal)],
 
@@ -327,32 +382,25 @@ def generuj_pdf(d: dict) -> bytes:
          Paragraph(d["datum_kontaktu"].strftime("%d.%m.%Y"), sVal)],
 
         [Paragraph("Mobilní telefon",     sLbl),
-         Paragraph(d["mobil"] or "—",     sVal),
+         FormField("mobil", FIELD_W, FIELD_H, FN, 9),
          Paragraph("Poradce / Kód",       sLbl),
          Paragraph(d["poradce"] or "—",   sVal)],
 
         [Paragraph("Povolání",            sLbl),
-         Paragraph(d["povolani"] or "—",  sVal),
+         FormField("povolani", FIELD_W, FIELD_H, FN, 9),
          Paragraph("", sLbl),
          Paragraph("", sVal)],
     ]
-    os_tbl = Table(os_rows, colWidths=cw_os)
+    os_tbl = Table(os_rows, colWidths=cw_os, rowHeights=[FIELD_H + 2*PAD]*4)
     os_tbl.setStyle(TableStyle(base_ts()))
     story.append(os_tbl)
     story.append(sp(3))
 
     # ════════════════════════════════════════════════════════
     #  SEC 2 — TÉMATA
-    #  Rozšířené sloupce pro názvy + menší font, aby se vešel
-    #  celý text ("Vlastní bydlení / Rekonstrukce", "Start do
-    #  života", "Daňové úspory a efektivita", "Optimalizace
-    #  úvěrů / Dluhů").
     # ════════════════════════════════════════════════════════
     story.append(sec_bar("2  |  HLAVNÍ TÉMATA K ŘEŠENÍ"))
 
-    # Sloupec pro chip musí být dost široký, aby se "ANO" vešlo na 1 řádek.
-    # Při fontu 7.5pt + tučné + padding 3pt z každé strany potřebujeme cca
-    # 28-30 pt. W je cca 538 pt, takže C_CHIP = 0.060 * W ≈ 32 pt — bezpečné.
     C_CHIP = W * 0.060
     C_TEM  = (W - 3 * C_CHIP) / 3
     cw_tem = [C_TEM, C_CHIP, C_TEM, C_CHIP, C_TEM, C_CHIP]
@@ -533,8 +581,8 @@ def generuj_pdf(d: dict) -> bytes:
 #  ODESLÁNÍ
 # ─────────────────────────────────────────────────────────────
 if odeslat:
-    if not jmeno:
-        st.error("⚠️ Vyplňte jméno klienta!")
+    if not poradce:
+        st.error("⚠️ Vyplňte poradce!")
     else:
         data = dict(
             jmeno=jmeno, email=email, mobil=mobil, povolani=povolani,
@@ -561,10 +609,10 @@ if odeslat:
         with st.spinner("Generuji PDF..."):
             pdf_bytes = generuj_pdf(data)
 
-        fname = f"Karta_{jmeno.replace(' ', '_')}.pdf"
+        fname = f"Karta_klienta_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
         st.success(f"✅ PDF připraveno: **{fname}**")
         st.download_button(
-            label="📥 Stáhnout PDF k tisku",
+            label="📥 Stáhnout PDF k vyplnění",
             data=pdf_bytes,
             file_name=fname,
             mime="application/pdf",
