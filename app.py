@@ -374,7 +374,7 @@ def generuj_pdf(d: dict) -> bytes:
          Paragraph(d["datum_schuzky"].strftime("%d.%m.%Y"), sVal)],
 
         [Paragraph("E-mail",              sLbl),
-         Paragraph(d["email"] or "—",     sVal),
+         FormField("E-mail", FIELD_W, FIELD_H),
          Paragraph("Datum nás. kontaktu", sLbl),
          Paragraph(d["datum_kontaktu"].strftime("%d.%m.%Y"), sVal)],
 
